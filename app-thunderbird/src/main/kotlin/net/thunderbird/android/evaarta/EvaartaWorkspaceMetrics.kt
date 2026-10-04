@@ -1,0 +1,3 @@
+package net.thunderbird.android.evaarta
+data class EvaartaWorkspaceMetrics(val documents:Int,val items:Int,val annotations:Int,val excerpts:Int,val notes:Int,val links:Int,val evidenceGroups:Int,val collections:Int)
+fun DocumentWorkspace.metrics()=EvaartaWorkspaceMetrics(documents.size,items.size,items.count{it.kind=="annotation"},items.count{it.kind=="excerpt"},items.count{it.kind=="note"},links.size,evidenceGroups.size,0)

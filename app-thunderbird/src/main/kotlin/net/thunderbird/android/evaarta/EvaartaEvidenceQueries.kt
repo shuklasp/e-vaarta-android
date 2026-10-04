@@ -51,9 +51,7 @@ object EvaartaEvidenceQueries {
             excerptCount = items.count { it is Excerpt },
             annotationCount = items.count { it is Annotation },
             groupCount = workspace.evidenceGroups.count { group ->
-                group.documentId == documentId || group.documentId == null && group.itemIds.any { itemId ->
-                    items.any { it.id == itemId }
-                }
+                group.itemIds.any { itemId -> items.any { it.id == itemId } }
             },
             pages = items.mapNotNull { it.anchorPage() }.distinct().sorted(),
         )

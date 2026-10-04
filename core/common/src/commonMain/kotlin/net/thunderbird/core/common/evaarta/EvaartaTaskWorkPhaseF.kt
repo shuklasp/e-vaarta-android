@@ -1,0 +1,13 @@
+package net.thunderbird.core.common.evaarta
+data class EvaartaPhaseFTask(val id:String,val title:String,val status:String="inbox",val assigneeId:String?=null,val projectId:String?=null,val dependsOn:List<String>=emptyList(),val estimateMinutes:Int=0,val remainingMinutes:Int=estimateMinutes,val skills:Set<String>=emptySet(),val evidenceIds:List<String>=emptyList(),val dueEpochMs:Long?=null,val updatedEpochMs:Long=System.currentTimeMillis())
+data class EvaartaAssignmentScore(val personId:String,val score:Double,val skill:Double,val availability:Double,val membership:Double)
+data class EvaartaPhaseFWorkload(val personId:String,val capacityMinutes:Int,val committedMinutes:Int,val availableMinutes:Int,val utilization:Double,val overloaded:Boolean)
+object EvaartaTaskWorkPhaseF{
+ fun validateGraph(ts:List<EvaartaPhaseFTask>):Boolean{val seen=mutableSetOf<String>();val visiting=mutableSetOf<String>();fun d(id:String):Boolean{if(id in visiting)return false;if(id in seen)return true;val t=ts.firstOrNull{it.id==id}?:return false;visiting+=id;if(t.dependsOn.any{!d(it)})return false;visiting-=id;seen+=id;return true};return ts.all{d(it.id)}}
+ fun score(t:EvaartaPhaseFTask,id:String,skills:Set<String>,capacity:Int,committed:Int,member:Boolean=true):EvaartaAssignmentScore{val skill=if(t.skills.isEmpty())1.0 else t.skills.count{it in skills}.toDouble()/t.skills.size;val avail=if(capacity>0)maxOf(0.0,(capacity-committed).toDouble()/capacity)else 1.0;return EvaartaAssignmentScore(id,.45*skill+.35*avail+.20*if(member)1.0 else 0.0,skill,avail,if(member)1.0 else 0.0)}
+ fun workload(ts:List<EvaartaPhaseFTask>,capacity:Map<String,Int>)=capacity.map{(id,cap)->val c=ts.filter{it.assigneeId==id&&!setOf("done","verified","cancelled").contains(it.status)}.sumOf{it.remainingMinutes};EvaartaPhaseFWorkload(id,cap,c,maxOf(0,cap-c),if(cap>0)c.toDouble()/cap else 0.0,c>cap)}
+ fun impact(ts:List<EvaartaPhaseFTask>,id:String):Set<String>{val out=mutableSetOf<String>();var q=listOf(id);while(q.isNotEmpty()){val next=ts.filter{it.dependsOn.any(q::contains)&&it.id !in out}.map{it.id};out+=next;q=next};return out}
+ fun monitor(t:EvaartaPhaseFTask,now:Long=System.currentTimeMillis()):String{if(t.status=="blocked")return "blocked";if(t.assigneeId==null)return "unassigned";if(t.dueEpochMs!=null&&now>t.dueEpochMs&&!setOf("done","verified","cancelled").contains(t.status))return "late";if(now-t.updatedEpochMs>=72*3600000)return "stalled";return "on-track"}
+ fun verify(t:EvaartaPhaseFTask,allowWithoutEvidence:Boolean=false)=t.copy(status=if(allowWithoutEvidence||t.evidenceIds.isNotEmpty())"verified" else "review")
+ fun evidenceCompletion(t:EvaartaPhaseFTask,evidence:List<String>)=t.copy(evidenceIds=(t.evidenceIds+evidence).distinct(),status="review")
+}

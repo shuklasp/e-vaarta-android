@@ -1,0 +1,7 @@
+package net.thunderbird.android.evaarta
+
+data class EvaartaTrustedPeer(val actorId:String,val publicKey:String,val fingerprint:String,val status:String="trusted")
+class EvaartaTrustStore{private val peers=mutableMapOf<String,EvaartaTrustedPeer>();fun trust(p:EvaartaTrustedPeer){peers[p.actorId]=p.copy(status="trusted")};fun revoke(id:String){peers[id]?.let{peers[id]=it.copy(status="revoked")}};fun isTrusted(id:String)=peers[id]?.status=="trusted"}
+class EvaartaPairingSession(private val trust:EvaartaTrustStore){var state="idle";private var peer:EvaartaTrustedPeer?=null;fun begin(p:EvaartaTrustedPeer){peer=p;state="awaiting-user"};fun approve(){val p=peer?:error("no pending pairing");trust.trust(p);state="trusted"};fun reject(){peer=null;state="rejected"}}
+data class EvaartaDeliveryReceipt(val messageId:String,val recipient:String,val status:String,val transport:String,val reason:String?=null)
+class EvaartaRuntimeOrchestrator(private val trust:EvaartaTrustStore,private val manager:EvaartaTransportManager,private val queue:EvaartaStoreForwardQueue){suspend fun dispatch(e:EvaartaEnvelope,peer:EvaartaTrustedPeer):EvaartaDeliveryReceipt{if(!trust.isTrusted(peer.actorId))error("recipient is not trusted");val r=manager.send(e);return if(r.isSuccess)EvaartaDeliveryReceipt(e.messageId,peer.actorId,"accepted",e.type) else{queue.enqueue(e);EvaartaDeliveryReceipt(e.messageId,peer.actorId,"queued",e.type,r.exceptionOrNull()?.message)}}}

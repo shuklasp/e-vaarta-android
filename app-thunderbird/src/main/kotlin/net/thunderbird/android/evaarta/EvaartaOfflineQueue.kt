@@ -1,0 +1,3 @@
+package net.thunderbird.android.evaarta
+data class EvaartaQueuedOperation(val id:String,val operation:String,val payload:String,val attempts:Int=0,val lastError:String?=null)
+class EvaartaOfflineQueue(private val entries:MutableList<EvaartaQueuedOperation> = mutableListOf()){fun enqueue(operation:String,payload:String){entries.add(EvaartaQueuedOperation(java.util.UUID.randomUUID().toString(),operation,payload))};fun peek()=entries.firstOrNull();fun removeHead(){if(entries.isNotEmpty())entries.removeAt(0)};fun retryHead(error:String){val h=entries.firstOrNull()?:return;entries[0]=h.copy(attempts=h.attempts+1,lastError=error)};fun snapshot():List<EvaartaQueuedOperation>=entries.toList()}

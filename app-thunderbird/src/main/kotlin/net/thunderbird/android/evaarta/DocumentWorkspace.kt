@@ -7,12 +7,14 @@ package net.thunderbird.android.evaarta
  * tablet and future synchronization code.
  */
 data class DocumentWorkspace(
-    val modelVersion: Int = 1,
+    val modelVersion: Int = 2,
     val id: String,
     val name: String,
     val description: String = "",
     val documents: List<Document> = emptyList(),
     val items: List<WorkspaceItem> = emptyList(),
+    /** Evidence groups are portable semantic collections of anchored items. */
+    val evidenceGroups: List<EvidenceGroup> = emptyList(),
     val links: List<WorkspaceLink> = emptyList(),
 )
 
@@ -64,6 +66,14 @@ data class Annotation(
 enum class LinkKind {
     RELATES_TO, SUPPORTS, CONTRADICTS, DERIVED_FROM, REFERENCES
 }
+
+data class EvidenceGroup(
+    val id: String,
+    val name: String,
+    val description: String = "",
+    val documentId: String? = null,
+    val itemIds: List<String> = emptyList(),
+)
 
 data class WorkspaceLink(
     val id: String,

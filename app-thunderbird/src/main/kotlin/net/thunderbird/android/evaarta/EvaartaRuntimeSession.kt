@@ -2,7 +2,7 @@ package net.thunderbird.android.evaarta
 
 import java.security.PrivateKey
 import java.security.Signature
-import java.util.Base64
+import android.util.Base64
 import java.util.UUID
 
 data class EvaartaSessionHello(
@@ -18,7 +18,14 @@ class EvaartaAndroidSessionSigner(privateKey: PrivateKey) {
         val signature = Signature.getInstance("SHA256withECDSA")
         signature.initSign(key)
         signature.update(value.toByteArray(Charsets.UTF_8))
-        return Base64.getEncoder().encodeToString(signature.sign())
+        return Base64.encodeToString(signature.sign(), Base64.NO_WRAP)
+    }
+
+    fun verify(value: String, encodedSignature: String, peerKey: java.security.PublicKey): Boolean {
+        val signature = Signature.getInstance("SHA256withECDSA")
+        signature.initVerify(peerKey)
+        signature.update(value.toByteArray(Charsets.UTF_8))
+        return signature.verify(Base64.decode(encodedSignature, Base64.NO_WRAP))
     }
 }
 
@@ -37,6 +44,12 @@ class EvaartaAuthenticatedSession(
         localNonce = nonce
         val unsigned = "$localActorId|$localFingerprint|$nonce"
         return EvaartaSessionHello(localActorId, localFingerprint, nonce, signer.sign(unsigned))
+    }
+
+    fun acceptPeerHello(hello: EvaartaSessionHello, peerKey: java.security.PublicKey) {
+        val unsigned = "${hello.actorId}|${hello.fingerprint}|${hello.nonce}"
+        check(signer.verify(unsigned, hello.signature, peerKey)) { "e-Vaarta peer authentication failed" }
+        remoteNonce = hello.nonce
     }
 
     fun acceptChallenge(challenge: String) {

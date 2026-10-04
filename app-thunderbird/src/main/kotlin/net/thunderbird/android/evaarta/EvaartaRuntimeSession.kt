@@ -1,0 +1,69 @@
+package net.thunderbird.android.evaarta
+
+import java.security.PrivateKey
+import java.security.Signature
+import android.util.Base64
+import java.util.UUID
+
+data class EvaartaSessionHello(
+    val actorId: String,
+    val fingerprint: String,
+    val nonce: String = UUID.randomUUID().toString(),
+    val signature: String
+)
+
+class EvaartaAndroidSessionSigner(privateKey: PrivateKey) {
+    private val key = privateKey
+    fun sign(value: String): String {
+        val signature = Signature.getInstance("SHA256withECDSA")
+        signature.initSign(key)
+        signature.update(value.toByteArray(Charsets.UTF_8))
+        return Base64.encodeToString(signature.sign(), Base64.NO_WRAP)
+    }
+
+    fun verify(value: String, encodedSignature: String, peerKey: java.security.PublicKey): Boolean {
+        val signature = Signature.getInstance("SHA256withECDSA")
+        signature.initVerify(peerKey)
+        signature.update(value.toByteArray(Charsets.UTF_8))
+        return signature.verify(Base64.decode(encodedSignature, Base64.NO_WRAP))
+    }
+}
+
+class EvaartaAuthenticatedSession(
+    private val localActorId: String,
+    private val localFingerprint: String,
+    private val signer: EvaartaAndroidSessionSigner
+) {
+    private var localNonce: String? = null
+    private var remoteNonce: String? = null
+    var authenticated: Boolean = false
+        private set
+
+    fun createHello(): EvaartaSessionHello {
+        val nonce = UUID.randomUUID().toString()
+        localNonce = nonce
+        val unsigned = "$localActorId|$localFingerprint|$nonce"
+        return EvaartaSessionHello(localActorId, localFingerprint, nonce, signer.sign(unsigned))
+    }
+
+    fun acceptPeerHello(hello: EvaartaSessionHello, peerKey: java.security.PublicKey) {
+        val unsigned = "${hello.actorId}|${hello.fingerprint}|${hello.nonce}"
+        check(signer.verify(unsigned, hello.signature, peerKey)) { "e-Vaarta peer authentication failed" }
+        remoteNonce = hello.nonce
+    }
+
+    fun acceptChallenge(challenge: String) {
+        check(challenge == localNonce) { "e-Vaarta session challenge mismatch" }
+        authenticated = true
+    }
+
+    fun rememberRemoteNonce(nonce: String) {
+        remoteNonce = nonce
+    }
+
+    fun close() {
+        localNonce = null
+        remoteNonce = null
+        authenticated = false
+    }
+}

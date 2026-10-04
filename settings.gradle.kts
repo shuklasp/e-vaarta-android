@@ -190,6 +190,7 @@ include(
 )
 
 include(
+    ":core:evaarta",
     ":core:architecture:api",
     ":core:common",
     ":core:configstore:api",

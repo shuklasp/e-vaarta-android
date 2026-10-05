@@ -1,0 +1,1 @@
+# e-Vaarta Universal Artifact Lifecycle — Android\n\nArtifacts are reusable references shared by tasks, evidence and communications. The Android semantic layer preserves stable IDs, hashes, revisions, provenance and sharing policy independently of transport delivery. Native file providers, share sheets, upload transports and encrypted storage remain runtime integration gates.\n
